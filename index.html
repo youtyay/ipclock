@@ -7,9 +7,27 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
         
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --sub-text: #999999;
+            --border-color: #000000;
+            --modal-bg: rgba(255, 255, 255, 0.95);
+            --transition-speed: 0.5s;
+            --user-select: none;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --sub-text: #666666;
+            --border-color: #ffffff;
+            --modal-bg: rgba(0, 0, 0, 0.95);
+        }
+
         body {
-            background-color: white;
-            color: black;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             font-family: "Ubuntu Mono", monospace;
             display: flex;
             flex-direction: column;
@@ -18,7 +36,14 @@
             height: 100vh;
             margin: 0;
             overflow: hidden;
-            user-select: none;
+            user-select: var(--user-select);
+            transition: background-color var(--transition-speed) ease-out, color var(--transition-speed) ease-out;
+        }
+
+        .hide-ui { cursor: none; }
+        .hide-ui .btn, .hide-ui .settings-control { 
+            opacity: 0 !important; 
+            pointer-events: none;
         }
 
         .container {
@@ -29,23 +54,39 @@
 
         #ipv6 {
             font-size: clamp(0.6rem, 2vw, 1.1rem);
-            color: #999;
+            color: var(--sub-text);
             margin-bottom: 1rem;
             text-transform: lowercase;
+            transition: color var(--transition-speed) ease-out;
         }
 
         #ipv4 {
             font-size: clamp(1.8rem, 10vw, 5.5rem);
             font-weight: bold;
             margin-bottom: 2rem;
+            transition: color 0.3s ease-out, -webkit-text-stroke 0.3s ease-out;
+            display: flex;
+            justify-content: center;
+        }
+
+        .jitter-fix .v4-segment {
+            display: inline-block;
+            width: 1.6em;
+            text-align: center;
+        }
+
+        .outline-mode #ipv4 {
+            color: transparent;
+            -webkit-text-stroke: 1.5px var(--text-color);
         }
 
         .info-block {
-            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            font-size: clamp(0.8rem, 1.5vw, 1.1rem);
             line-height: 1.5;
-            border-top: 1px solid #000;
+            border-top: 1px solid var(--border-color);
             padding-top: 1.5rem;
             display: inline-block;
+            transition: border-color var(--transition-speed) ease-out;
         }
 
         .side-controls {
@@ -57,31 +98,46 @@
             align-items: center;
         }
 
+        .settings-control {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            transition: opacity 0.5s ease-out;
+        }
+
         .btn {
             background: none;
             border: none;
             cursor: pointer;
             opacity: 0.3;
-            transition: opacity 0.3s;
+            transition: opacity 0.5s ease-out;
             padding: 5px;
         }
 
         .btn:hover { opacity: 1; }
-        .btn svg { width: 32px; height: 32px; fill: black; }
+        .btn svg { 
+            width: 32px; height: 32px; 
+            fill: var(--text-color); 
+            transition: fill var(--transition-speed) ease-out;
+        }
 
-        #modal {
+        #modal, #settings-modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.95);
+            background: var(--modal-bg);
             z-index: 100;
             justify-content: center;
             align-items: center;
         }
 
         .modal-content {
-            background: white;
-            border: 2px solid black;
+            background: var(--bg-color);
+            border: 2px solid var(--border-color);
+            color: var(--text-color);
             padding: 30px;
             max-width: 500px;
             width: 85%;
@@ -89,6 +145,7 @@
             text-align: left;
             font-size: 0.9rem;
             line-height: 1.4;
+            transition: background-color var(--transition-speed) ease-out, border-color var(--transition-speed) ease-out;
         }
 
         .close-btn {
@@ -99,15 +156,40 @@
             font-weight: bold;
         }
 
-        h3 { margin-top: 0; border-bottom: 1px solid black; padding-bottom: 5px; }
-        code { background: #eee; padding: 2px 4px; }
+        h3 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+        code { background: var(--sub-text); color: var(--bg-color); padding: 2px 4px; }
+
+        .setting-item {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        select, input[type="range"] {
+            font-family: "Ubuntu Mono", monospace;
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="settings-control">
+        <button class="btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+            <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        </button>
+        <button class="btn" onclick="toggleSettings()" title="Settings">
+            <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        </button>
+    </div>
+
+    <div class="container" id="clock-body">
         <div id="ipv6">0000:0000:0000:0000:0000:0000:0000:0000</div>
-        <div id="ipv4">0.0.0.0</div>
+        <div id="ipv4">
+            <span class="v4-segment">0</span>.<span class="v4-segment">0</span>.<span class="v4-segment">0</span>.<span class="v4-segment">0</span>
+        </div>
         
         <div class="info-block">
             <div id="standard-date">---</div>
@@ -131,20 +213,81 @@
             <span class="close-btn" onclick="toggleModal()">&times;</span>
             <h3>how it works</h3>
             <p>this clock visualizes the "progress" of each time unit in an ip-address-like format.</p>
-            
             <b>IPv4:</b>
-            <p><code>day.hour.min.sec</code>: each segment represents the linear completion of the unit from 0 to 255, imagine visualization of time as a percentage but instead of 100% you use 255% as a maximum</p>
-
+            <p><code>day.hour.min.sec</code>: linear completion of each unit from 0 to 255, imagine if you measured time as a percentage, but instead of the maximum being 100% it is 255%</p>
             <b>IPv6:</b>
-            <p>segments represent: <code>century:year:month:day:hour:min:sec:ms</code>, uses the same principle as IPv4 version</p>
+            <p><code>century:year:month:day:hour:min:sec:tick</code>: basically the same thing as previous but progression goes up to 65535 in hexadecimal format.</p>
+        </div>
+    </div>
+
+    <div id="settings-modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="toggleSettings()">&times;</span>
+            <h3>settings</h3>
             
-            <p><b>github:</b> <a href="https://github.com/youtyay/ipclock" target="_blank" style="color: #007bff; text-decoration: none;">youtyay/ipclock</a></p>
+            <div class="setting-item">
+                <label>theme</label>
+                <select id="theme-select" onchange="applySettings()">
+                    <option value="auto">Auto</option>
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <label>outline mode</label>
+                <input type="checkbox" id="outline-check" onchange="applySettings()">
+            </div>
+
+            <div class="setting-item">
+                <label>less jitter mode</label>
+                <input type="checkbox" id="jitter-check" onchange="applySettings()">
+            </div>
+
+            <div class="setting-item">
+                <label>enable text selection</label>
+                <input type="checkbox" id="selection-check" onchange="applySettings()">
+            </div>
+
+            <div class="setting-item">
+                <label>refresh rate</label>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="range" id="refresh-range" min="1" max="60" value="60" oninput="applySettings()">
+                    <span id="refresh-val">60Hz</span>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         let isPaused = false;
+        let lastUpdate = 0;
+        let refreshRate = 60;
+        let idleTimer;
         const locale = navigator.language || 'en-US';
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+
+        function resetIdleTimer() {
+            document.body.classList.remove('hide-ui');
+            clearTimeout(idleTimer);
+            if (document.getElementById('modal').style.display !== 'flex' && 
+                document.getElementById('settings-modal').style.display !== 'flex') {
+                idleTimer = setTimeout(() => {
+                    document.body.classList.add('hide-ui');
+                }, 3000);
+            }
+        }
+
+        document.addEventListener('mousemove', resetIdleTimer);
+        document.addEventListener('keydown', resetIdleTimer);
+        document.addEventListener('click', resetIdleTimer);
 
         function togglePause() {
             isPaused = !isPaused;
@@ -155,9 +298,43 @@
         function toggleModal() {
             const modal = document.getElementById('modal');
             modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+            resetIdleTimer();
         }
 
-        function update() {
+        function toggleSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+            resetIdleTimer();
+        }
+
+        function applySettings() {
+            const theme = document.getElementById('theme-select').value;
+            const isOutline = document.getElementById('outline-check').checked;
+            const isJitterFix = document.getElementById('jitter-check').checked;
+            const isSelection = document.getElementById('selection-check').checked;
+            refreshRate = document.getElementById('refresh-range').value;
+            
+            if (theme === 'auto') {
+                const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            } else {
+                document.body.setAttribute('data-theme', theme);
+            }
+
+            document.documentElement.style.setProperty('--user-select', isSelection ? 'text' : 'none');
+            document.body.classList.toggle('outline-mode', isOutline);
+            document.getElementById('clock-body').classList.toggle('jitter-fix', isJitterFix); 
+            document.getElementById('refresh-val').textContent = refreshRate + 'Hz';
+        }
+
+        function update(timestamp) {
+            const interval = 1000 / refreshRate;
+            if (timestamp - lastUpdate < interval) {
+                requestAnimationFrame(update);
+                return;
+            }
+            lastUpdate = timestamp;
+
             if (!isPaused) {
                 const now = new Date();
                 const ms = now.getMilliseconds();
@@ -177,7 +354,10 @@
                 const v4Min  = Math.floor((msInMin / 60000) * 256);
                 const v4Sec  = Math.floor((ms / 1000) * 256);
 
-                document.getElementById('ipv4').textContent = `${v4Day}.${v4Hour}.${v4Min}.${v4Sec}`;
+                const segments = document.querySelectorAll('.v4-segment');
+                [v4Day, v4Hour, v4Min, v4Sec].forEach((val, i) => {
+                    segments[i].textContent = val;
+                });
 
                 const startOfYear = new Date(y, 0, 1);
                 const startOfMonth = new Date(y, mo, 1);
@@ -208,7 +388,9 @@
             requestAnimationFrame(update);
         }
 
-        update();
+        applySettings();
+        resetIdleTimer();
+        requestAnimationFrame(update);
     </script>
 </body>
 </html>
