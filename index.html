@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ip-style clock</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+        
+        body {
+            background-color: white;
+            color: black;
+            font-family: "Ubuntu Mono", monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 1000px;
+        }
+
+        #ipv6 {
+            font-size: clamp(0.6rem, 2vw, 1.1rem);
+            color: #999;
+            margin-bottom: 1rem;
+            text-transform: lowercase;
+        }
+
+        #ipv4 {
+            font-size: clamp(1.8rem, 10vw, 5.5rem);
+            font-weight: bold;
+            margin-bottom: 2rem;
+        }
+
+        .info-block {
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            line-height: 1.5;
+            border-top: 1px solid #000;
+            padding-top: 1.5rem;
+            display: inline-block;
+        }
+
+        .side-controls {
+            position: fixed;
+            bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+            padding: 5px;
+        }
+
+        .btn:hover { opacity: 1; }
+        .btn svg { width: 32px; height: 32px; fill: black; }
+
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border: 2px solid black;
+            padding: 30px;
+            max-width: 500px;
+            width: 85%;
+            position: relative;
+            text-align: left;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px; right: 10px;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        h3 { margin-top: 0; border-bottom: 1px solid black; padding-bottom: 5px; }
+        code { background: #eee; padding: 2px 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="ipv6">0000:0000:0000:0000:0000:0000:0000:0000</div>
+        <div id="ipv4">0.0.0.0</div>
+        
+        <div class="info-block">
+            <div id="standard-date">---</div>
+            <div id="standard-time">---</div>
+            <div id="unix-time">---</div>
+        </div>
+    </div>
+
+    <div class="side-controls">
+        <button class="btn" onclick="togglePause()" title="Pause/Resume">
+            <svg id="play-icon" viewBox="0 0 24 24" style="display:none;"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="pause-icon" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+        </button>
+        <button class="btn" onclick="toggleModal()" title="Information">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
+        </button>
+    </div>
+
+    <div id="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="toggleModal()">&times;</span>
+            <h3>how it works</h3>
+            <p>this clock visualizes the "progress" of each time unit in an ip-address-like format.</p>
+            
+            <b>IPv4:</b>
+            <p><code>day.hour.min.sec</code>: each segment represents the linear completion of the unit from 0 to 255, imagine visualization of time as a percentage but instead of 100% you use 255% as a maximum</p>
+
+            <b>IPv6:</b>
+            <p>segments represent: <code>century:year:month:day:hour:min:sec:ms</code>, uses the same principle as IPv4 version</p>
+            
+            <p><b>github:</b> <a href="https://github.com/youtyay/ipclock" target="_blank" style="color: #007bff; text-decoration: none;">youtyay/ipclock</a></p>
+        </div>
+    </div>
+
+    <script>
+        let isPaused = false;
+        const locale = navigator.language || 'ru-RU';
+
+        function togglePause() {
+            isPaused = !isPaused;
+            document.getElementById('pause-icon').style.display = isPaused ? 'none' : 'block';
+            document.getElementById('play-icon').style.display = isPaused ? 'block' : 'none';
+        }
+
+        function toggleModal() {
+            const modal = document.getElementById('modal');
+            modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        function update() {
+            if (!isPaused) {
+                const now = new Date();
+                const ms = now.getMilliseconds();
+                const s = now.getSeconds();
+                const m = now.getMinutes();
+                const h = now.getHours();
+                const d = now.getDate();
+                const mo = now.getMonth();
+                const y = now.getFullYear();
+
+                const msInDay = (((h * 60 + m) * 60 + s) * 1000) + ms;
+                const msInHour = ((m * 60 + s) * 1000) + ms;
+                const msInMin = (s * 1000) + ms;
+
+                const v4Day  = Math.floor((msInDay / 86400000) * 256);
+                const v4Hour = Math.floor((msInHour / 3600000) * 256);
+                const v4Min  = Math.floor((msInMin / 60000) * 256);
+                const v4Sec  = Math.floor((ms / 1000) * 256);
+
+                document.getElementById('ipv4').textContent = `${v4Day}.${v4Hour}.${v4Min}.${v4Sec}`;
+
+                const startOfYear = new Date(y, 0, 1);
+                const startOfMonth = new Date(y, mo, 1);
+                const daysInMonth = new Date(y, mo + 1, 0).getDate();
+                const isLeap = (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+                const msInYearTotal = (isLeap ? 366 : 365) * 86400000;
+
+                const v6Century = Math.floor(((y % 100) / 100) * 65536);
+                const v6Year    = Math.floor(((now - startOfYear) / msInYearTotal) * 65536);
+                const v6Month   = Math.floor(((now - startOfMonth) / (daysInMonth * 86400000)) * 65536);
+                const v6Day     = Math.floor((msInDay / 86400000) * 65536);
+                const v6Hour    = Math.floor((msInHour / 3600000) * 65536);
+                const v6Min     = Math.floor((msInMin / 60000) * 65536);
+                const v6Sec     = Math.floor((ms / 1000) * 65536);
+                const v6Tick    = Math.floor((performance.now() % 1000 / 1000) * 65536);
+
+                const toHex = (val) => Math.min(val, 65535).toString(16).padStart(4, '0');
+
+                document.getElementById('ipv6').textContent = 
+                    `${toHex(v6Century)}:${toHex(v6Year)}:${toHex(v6Month)}:${toHex(v6Day)}:${toHex(v6Hour)}:${toHex(v6Min)}:${toHex(v6Sec)}:${toHex(v6Tick)}`;
+
+                document.getElementById('standard-date').textContent = new Intl.DateTimeFormat(locale, { 
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                }).format(now);
+                document.getElementById('standard-time').textContent = now.toLocaleTimeString(locale, { hour12: false });
+                document.getElementById('unix-time').textContent = `unix: ${Math.floor(Date.now() / 1000)}`;
+            }
+            requestAnimationFrame(update);
+        }
+
+        update();
+    </script>
+</body>
+</html>
