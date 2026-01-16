@@ -418,8 +418,10 @@
                 const daysInMonth = new Date(y, mo + 1, 0).getDate();
                 const isLeap = (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
                 const msInYearTotal = (isLeap ? 366 : 365) * 86400000;
+                const startOfCentury = new Date(Math.floor(y / 100) * 100, 0, 1);
+                const endOfCentury = new Date((Math.floor(y / 100) + 1) * 100, 0, 1);
 
-                const v6Century = Math.floor(((y % 100) / 100) * 65536);
+                const v6Century = Math.floor(((now - startOfCentury) / (endOfCentury - startOfCentury)) * 65536);
                 const v6Year    = Math.floor(((now - startOfYear) / msInYearTotal) * 65536);
                 const v6Month   = Math.floor(((now - startOfMonth) / (daysInMonth * 86400000)) * 65536);
                 const v6Day     = Math.floor((msInDay / 86400000) * 65536);
